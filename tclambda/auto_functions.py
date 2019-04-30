@@ -2,6 +2,8 @@ import os
 
 from .function import LambdaFunction
 
+__path__ = None
+
 
 def __getattr__(module) -> LambdaFunction:
     queue = os.getenv(f"TC_{module.upper()}_QUEUE")
