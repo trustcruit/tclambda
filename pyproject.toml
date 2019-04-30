@@ -7,4 +7,5 @@ module = "tclambda"
 author = "Niels Lemmens"
 author-email = "draso.odin@gmail.com"
 classifiers = ["License :: OSI Approved :: MIT License"]
+home-page = "https://github.com/trustcruit/tclambda"
 
