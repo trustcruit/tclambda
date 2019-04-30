@@ -1,10 +1,12 @@
 import os
+from functools import lru_cache
 
 from .function import LambdaFunction
 
 __path__ = None
 
 
+@lru_cache(128)
 def __getattr__(module) -> LambdaFunction:
     queue = os.getenv(f"TC_{module.upper()}_QUEUE")
     bucket = os.getenv(f"TC_{module.upper()}_BUCKET")
