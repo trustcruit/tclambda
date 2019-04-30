@@ -47,6 +47,7 @@ class LambdaFunction:
 
 class LambdaResult:
     def __init__(self, s3_bucket, key):
+        self.logger = logging.getLogger("tclambda.function.LambdaFunction")
         self.s3_bucket = s3_bucket
         self.key = key
         self.waited = False
