@@ -40,3 +40,22 @@ lambda_result = numpy.polyfit([1, 2], [2, 1], 1)
 print(lambda_result.result())
 # Output: [2.999999999999998, -0.9999999999999992]
 ```
+
+
+## Retry lambda
+
+```python
+import tclambda
+import requests
+
+handler = tclambda.LambdaHandler()
+
+
+@handler.register()
+def web_data(*args, **kwargs):
+    try:
+        response = requests.get("https://example.com")
+        response.raise_for_status()
+    except Exception as e:
+        raise tclambda.RetryException(e)
+    return response.text

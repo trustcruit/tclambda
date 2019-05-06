@@ -8,6 +8,8 @@ from io import StringIO
 
 import boto3
 
+from .exceptions import RetryException
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 logger.setLevel(logging.INFO)
@@ -77,6 +79,8 @@ class LambdaHandler:
                 result_body["result"] = await func(*args, **kwargs)
             else:
                 result_body["result"] = func(*args, **kwargs)
+        except RetryException:
+            raise
         except Exception as e:
             self.logger.exception("An exception occured while executing {func}")
             s = StringIO()
