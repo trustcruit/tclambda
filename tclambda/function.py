@@ -88,15 +88,17 @@ class LambdaResult:
 
     def result(self, delay: int = 5, max_attempts: int = 20):
         self.wait(delay, max_attempts)
-        if self._result.get("result"):
+        try:
             return self._result["result"]
-        raise Exception(self._result["exception"])
+        except KeyError:
+            raise Exception(self._result["exception"])
 
     async def async_result(self, delay: int = 5, max_attempts: int = 20):
         await self.async_wait(delay, max_attempts)
-        if self._result.get("result"):
+        try:
             return self._result["result"]
-        raise Exception(self._result["exception"])
+        except KeyError:
+            raise Exception(self._result["exception"])
 
 
 def sizeof_fmt(num, suffix="B"):
