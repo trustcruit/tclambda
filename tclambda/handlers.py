@@ -15,6 +15,7 @@ logger = logging.getLogger("app")
 logger.setLevel(logging.INFO)
 
 s3client = boto3.client("s3")
+cloudwatch = boto3.client("cloudwatch")
 
 TC_THIS_BUCKET = os.getenv("TC_THIS_BUCKET")
 
@@ -87,6 +88,24 @@ class LambdaHandler:
             traceback.print_exc(file=s)
             result_body["exception"] = repr(e)
             result_body["traceback"] = s.getvalue()
+        finally:
+            cloudwatch.put_metric_data(
+                Namespace="tclambda",
+                MetricData=[
+                    {
+                        "MetricName": "Count",
+                        "Value": 1,
+                        "Unit": "Count",
+                        "Dimensions": [
+                            {"Name": "TcFunctionName", "Value": func_name},
+                            {
+                                "Name": "LambdaFunctionName",
+                                "Value": context.function_name,
+                            },
+                        ],
+                    }
+                ],
+            )
 
         if result_store:
             self.store_result(result_store, result_body)
