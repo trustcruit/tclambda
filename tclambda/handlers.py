@@ -38,7 +38,7 @@ class LambdaHandler:
 
     def __call__(self, event, context):
         self.context = context
-        self.logger.warning(event)
+        self.logger.info(event)
         if "Records" in event:
             return asyncio.run(self.handle_sqs_event(event, context))
         elif "function" in event:
@@ -83,7 +83,7 @@ class LambdaHandler:
         except RetryException:
             raise
         except Exception as e:
-            self.logger.exception("An exception occured while executing {func}")
+            self.logger.exception(f"An exception occured while executing {message}")
             s = StringIO()
             traceback.print_exc(file=s)
             result_body["exception"] = repr(e)
