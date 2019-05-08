@@ -103,7 +103,19 @@ class LambdaHandler:
                                 "Value": context.function_name,
                             },
                         ],
-                    }
+                    },
+                    {
+                        "MetricName": "RemainingMilliseconds",
+                        "Value": context.get_remaining_time_in_millis(),
+                        "Unit": "Milliseconds",
+                        "Dimensions": [
+                            {"Name": "TcFunctionName", "Value": func_name},
+                            {
+                                "Name": "LambdaFunctionName",
+                                "Value": context.function_name,
+                            },
+                        ],
+                    },
                 ],
             )
 
