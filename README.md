@@ -59,3 +59,10 @@ def web_data(*args, **kwargs):
     except Exception as e:
         raise tclambda.RetryException(e)
     return response.text
+
+
+# Tests
+
+- Create an S3 bucket to test live against
+- Add `TC_THIS_BUCKET=my-test-s3-bucket` to `.env`
+- Run `pipenv run test`

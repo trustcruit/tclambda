@@ -8,8 +8,15 @@ flit = "*"
 isort = "*"
 flake8 = "*"
 black = "==19.3b0"
+boto3 = "*"
+coverage = "*"
+pytest = "*"
+pytest-cov = "*"
 
 [packages]
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+test = "pytest --cov tclambda tests"
