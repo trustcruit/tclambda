@@ -11,8 +11,6 @@ import boto3
 from .exceptions import RetryException
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("app")
-logger.setLevel(logging.INFO)
 
 s3client = boto3.client("s3")
 cloudwatch = boto3.client("cloudwatch")
@@ -51,7 +49,7 @@ class LambdaHandler:
             try:
                 message = json.loads(body)
             except json.JSONDecodeError:
-                logger.exception(f'Couldn\'t decode body "{body}"')
+                self.logger.exception(f'Couldn\'t decode body "{body}"')
             else:
                 future = asyncio.ensure_future(self.handle_message(message, context))
                 handlers.append(future)
@@ -60,7 +58,7 @@ class LambdaHandler:
     async def handle_message(self, message, context):
         func_name = message.get("function")
         if not func_name:
-            logger.error(f'Message does not contain key "function" {message}')
+            self.logger.error(f'Message does not contain key "function" {message}')
             return
         func = self.functions.get(func_name)
         if not func:
