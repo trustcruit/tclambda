@@ -59,6 +59,7 @@ def web_data(*args, **kwargs):
     except Exception as e:
         raise tclambda.RetryException(e)
     return response.text
+```
 
 
 # Tests
