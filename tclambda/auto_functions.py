@@ -12,5 +12,5 @@ def __getattr__(module) -> LambdaFunction:
     bucket = os.getenv(f"TC_{module.upper()}_BUCKET")
     print(f"Looking for lambda function {module}")
     if not queue:
-        raise AttributeError(f"Couldn't automatically create LambdaFunction {module}")
+        raise ImportError(f"Couldn't automatically create LambdaFunction {module}")
     return LambdaFunction(queue, bucket)
