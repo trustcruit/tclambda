@@ -56,24 +56,25 @@ class LambdaHandler:
         await asyncio.gather(*handlers)
 
     async def handle_message(self, message, context):
-        func_name = message.get("function")
-        if not func_name:
-            self.logger.error(f'Message does not contain key "function" {message}')
-            return
-        func = self.functions.get(func_name)
-        if not func:
-            available_functions = sorted(self.functions.keys())
-            self.logger.error(
-                f"Function {func_name} is not a registered function in {available_functions}"
-            )
-            return
-
-        args = message.get("args", ())
-        kwargs = message.get("kwargs", {})
-        result_store = message.get("result_store")
         result_body = {}
+        result_store = message.get("result_store")
 
         try:
+            func_name = message.get("function")
+            if not func_name:
+                self.logger.error(f'Message does not contain key "function" {message}')
+                raise TypeError(f'Message does not contain key "function" {message}')
+            func = self.functions.get(func_name)
+            if not func:
+                available_functions = sorted(self.functions.keys())
+                self.logger.error(
+                    f"Function {func_name} is not a registered function in {available_functions}"
+                )
+                raise TypeError(f"Function {func_name} does not exist")
+
+            args = message.get("args", ())
+            kwargs = message.get("kwargs", {})
+
             if asyncio.iscoroutinefunction(func):
                 result_body["result"] = await func(*args, **kwargs)
             else:
