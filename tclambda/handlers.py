@@ -96,7 +96,7 @@ class LambdaHandler:
                         "Value": 1,
                         "Unit": "Count",
                         "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": func_name},
+                            {"Name": "TcFunctionName", "Value": str(func_name)},
                             {
                                 "Name": "LambdaFunctionName",
                                 "Value": context.function_name,
@@ -108,7 +108,7 @@ class LambdaHandler:
                         "Value": context.get_remaining_time_in_millis(),
                         "Unit": "Milliseconds",
                         "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": func_name},
+                            {"Name": "TcFunctionName", "Value": str(func_name)},
                             {
                                 "Name": "LambdaFunctionName",
                                 "Value": context.function_name,
