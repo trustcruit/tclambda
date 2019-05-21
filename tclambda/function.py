@@ -1,4 +1,6 @@
 # https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -19,30 +21,37 @@ TC_BUCKET = os.getenv("TC_THIS_BUCKET")
 
 class LambdaFunction:
     def __init__(self, queue_url=TC_QUEUE, s3_bucket=TC_BUCKET):
-        self.logger = logging.getLogger("tclambda.function.LambdaFunction")
         self.queue_url = queue_url
         self.s3_bucket = s3_bucket
 
     def __getattr__(self, function_name):
-        def wrapper(*args, **kwargs) -> LambdaResult:
-            key = f"results/{function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
-            message_body = json.dumps(
-                {
-                    "function": function_name,
-                    "args": args,
-                    "kwargs": kwargs,
-                    "result_store": key,
-                }
-            )
-            self.logger.debug(
-                f'Enqueing function "{function_name}", '
-                f'result_store: "{key}", '
-                f"message_body size: {sizeof_fmt(len(message_body))}"
-            )
-            sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=message_body)
-            return LambdaResult(s3_bucket=self.s3_bucket, key=key)
+        return LambdaWrapperFunction(self.queue_url, self.s3_bucket, function_name)
 
-        return wrapper
+
+class LambdaWrapperFunction:
+    def __init__(self, queue_url, s3_bucket, function_name):
+        self.logger = logging.getLogger("tclambda.function.LambdaFunction")
+        self.queue_url = queue_url
+        self.s3_bucket = s3_bucket
+        self.function_name = function_name
+
+    def __call__(self, *args, **kwargs) -> LambdaResult:
+        key = f"results/{self.function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
+        message_body = json.dumps(
+            {
+                "function": self.function_name,
+                "args": args,
+                "kwargs": kwargs,
+                "result_store": key,
+            }
+        )
+        self.logger.debug(
+            f'Enqueing function "{self.function_name}", '
+            f'result_store: "{key}", '
+            f"message_body size: {sizeof_fmt(len(message_body))}"
+        )
+        sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=message_body)
+        return LambdaResult(s3_bucket=self.s3_bucket, key=key)
 
 
 class LambdaResult:
