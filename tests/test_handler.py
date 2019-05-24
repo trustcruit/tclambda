@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
 
+import boto3
+
 import tclambda
+
+s3client = boto3.client("s3")
 
 TC_THIS_BUCKET = os.getenv("TC_THIS_BUCKET")
 
@@ -24,6 +28,28 @@ class FunctionBuilder:
     @property
     def sqs(self):
         return {"Records": [{"body": json.dumps(self.message_body)}]}
+
+
+class ProxyFunctionBuilder:
+    def __init__(self, function, *args, **kwargs):
+        key = f"{function}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
+        result_store = f"tests/results/{key}"
+        proxy_store = f"tests/proxy/{key}"
+        self.message_body = {
+            "function": function,
+            "args": args,
+            "kwargs": kwargs,
+            "result_store": result_store,
+        }
+        self.proxy_body = {"proxy": proxy_store}
+        s3client.put_object(
+            Bucket=TC_THIS_BUCKET, Key=proxy_store, Body=json.dumps(self.message_body)
+        )
+        self.result = tclambda.function.LambdaResult(TC_THIS_BUCKET, result_store)
+
+    @property
+    def sqs(self):
+        return {"Records": [{"body": json.dumps(self.proxy_body)}]}
 
 
 @dataclass
@@ -141,3 +167,9 @@ class TestHandler(unittest.TestCase):
             Exception, 'TypeError.*Message does not contain key "function"'
         ):
             f.result.result(delay=1, max_attempts=3)
+
+    @unittest.skipIf(TC_THIS_BUCKET is None, "TC_THIS_BUCKET is None")
+    def test_proxy_result(self):
+        f = ProxyFunctionBuilder("ping")
+        self.app(f.message_body, LambdaContext(function_name="tclambda-test"))
+        self.assertEqual(f.result.result(delay=1, max_attempts=3), "pong")
