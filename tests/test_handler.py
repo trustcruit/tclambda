@@ -171,5 +171,5 @@ class TestHandler(unittest.TestCase):
     @unittest.skipIf(TC_THIS_BUCKET is None, "TC_THIS_BUCKET is None")
     def test_proxy_result(self):
         f = ProxyFunctionBuilder("ping")
-        self.app(f.message_body, LambdaContext(function_name="tclambda-test"))
+        self.app(f.proxy_body, LambdaContext(function_name="tclambda-test"))
         self.assertEqual(f.result.result(delay=1, max_attempts=3), "pong")

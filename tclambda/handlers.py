@@ -39,7 +39,7 @@ class LambdaHandler:
         self.logger.info(event)
         if "Records" in event:
             return asyncio.run(self.handle_sqs_event(event, context))
-        elif "function" in event:
+        elif "function" in event or "proxy" in event:
             return asyncio.run(self.handle_message(event, context))
 
     async def handle_sqs_event(self, event, context):
@@ -51,16 +51,14 @@ class LambdaHandler:
             except json.JSONDecodeError:
                 self.logger.exception(f'Couldn\'t decode body "{body}"')
             else:
-                if "proxy" in message:
-                    obj = s3client.get_object(
-                        Bucket=TC_THIS_BUCKET, Key=message["proxy"]
-                    )
-                    message = json.load(obj["Body"])
                 future = asyncio.ensure_future(self.handle_message(message, context))
                 handlers.append(future)
         await asyncio.gather(*handlers)
 
     async def handle_message(self, message, context):
+        if "proxy" in message:
+            obj = s3client.get_object(Bucket=TC_THIS_BUCKET, Key=message["proxy"])
+            message = json.load(obj["Body"])
         result_body = {}
         result_store = message.get("result_store")
 
