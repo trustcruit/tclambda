@@ -12,6 +12,8 @@ from uuid import uuid4
 import boto3
 from botocore.exceptions import ClientError
 
+from .extras import timeme
+
 s3client = boto3.client("s3")
 sqsclient = boto3.client("sqs")
 
@@ -36,22 +38,34 @@ class LambdaWrapperFunction:
         self.function_name = function_name
 
     def __call__(self, *args, **kwargs) -> LambdaResult:
-        key = f"results/{self.function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
+        key = f"{self.function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
+        result_store = f"results/{key}"
+        proxy_store = f"proxy/{key}"
         message_body = json.dumps(
             {
                 "function": self.function_name,
                 "args": args,
                 "kwargs": kwargs,
-                "result_store": key,
+                "result_store": result_store,
             }
         )
-        self.logger.debug(
+        self.logger.info(
             f'Enqueing function "{self.function_name}", '
-            f'result_store: "{key}", '
+            f'result_store: "{result_store}", '
             f"message_body size: {sizeof_fmt(len(message_body))}"
         )
-        sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=message_body)
-        return LambdaResult(s3_bucket=self.s3_bucket, key=key)
+        if len(message_body) > 250000:  # current maximum is 262144 bytes
+            self.logger.info(f"Uploading message_body as a proxy {proxy_store}")
+            with timeme() as dt:
+                s3client.put_object(
+                    Bucket=self.s3_bucket, Key=proxy_store, Body=message_body
+                )
+            self.logger.info(f"Uploaded proxy in {dt.value}s")
+            proxy_body = json.dumps({"proxy": proxy_store})
+            sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=proxy_body)
+        else:
+            sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=message_body)
+        return LambdaResult(s3_bucket=self.s3_bucket, key=result_store)
 
 
 class LambdaResult:

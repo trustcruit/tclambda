@@ -51,6 +51,11 @@ class LambdaHandler:
             except json.JSONDecodeError:
                 self.logger.exception(f'Couldn\'t decode body "{body}"')
             else:
+                if "proxy" in message:
+                    obj = s3client.get_object(
+                        Bucket=TC_THIS_BUCKET, Key=message["proxy"]
+                    )
+                    message = json.load(obj["Body"])
                 future = asyncio.ensure_future(self.handle_message(message, context))
                 handlers.append(future)
         await asyncio.gather(*handlers)
