@@ -9,7 +9,9 @@ from io import StringIO
 import boto3
 
 from .exceptions import RetryException
+from .extras import sentry_init
 
+sentry_init()
 logging.basicConfig(level=logging.INFO)
 
 s3client = boto3.client("s3")

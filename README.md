@@ -61,6 +61,17 @@ def web_data(*args, **kwargs):
     return response.text
 ```
 
+## Error handling
+
+### Sentry
+
+Install tclambda together with sentry `pip install tclambda[sentry]`
+Setting up sentry is done automatically through environmental variables.
+
+- SENTRY_DSN
+- SENTRY_RELEASE
+- SENTRY_ENVIRONMENT
+
 
 # Tests
 
