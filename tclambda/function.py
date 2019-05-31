@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
 
@@ -30,6 +31,45 @@ class LambdaFunction:
         return LambdaWrapperFunction(self.queue_url, self.s3_bucket, function_name)
 
 
+@dataclass
+class Message:
+    result_store: str
+    message_body: str
+
+
+def build_message(
+    function_name, args, kwargs, s3_bucket, force_upload=False
+) -> Message:
+    logger = logging.getLogger("tclambda.function.build_message")
+    key = f"{function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
+    result_store = f"results/{key}"
+    proxy_store = f"proxy/{key}"
+
+    message_body = json.dumps(
+        {
+            "function": function_name,
+            "args": args,
+            "kwargs": kwargs,
+            "result_store": result_store,
+        }
+    )
+
+    logger.info(
+        f'Function "{function_name}", '
+        f'result_store: "{result_store}", '
+        f"message_body size: {sizeof_fmt(len(message_body))}"
+    )
+
+    if len(message_body) > 250000 or force_upload:  # current maximum is 262144 bytes
+        logger.info("Uploading proxy for {function_name}")
+        with timeme() as dt:
+            s3client.put_object(Bucket=s3_bucket, Key=proxy_store, Body=message_body)
+        logger.info(f"Uploaded proxy for {function_name} in {dt.value}s")
+        message_body = json.dumps({"proxy": proxy_store})
+
+    return Message(result_store=result_store, message_body=message_body)
+
+
 class LambdaWrapperFunction:
     def __init__(self, queue_url, s3_bucket, function_name):
         self.logger = logging.getLogger("tclambda.function.LambdaFunction")
@@ -38,34 +78,16 @@ class LambdaWrapperFunction:
         self.function_name = function_name
 
     def __call__(self, *args, **kwargs) -> LambdaResult:
-        key = f"{self.function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
-        result_store = f"results/{key}"
-        proxy_store = f"proxy/{key}"
-        message_body = json.dumps(
-            {
-                "function": self.function_name,
-                "args": args,
-                "kwargs": kwargs,
-                "result_store": result_store,
-            }
+        message = build_message(
+            function_name=self.function_name,
+            args=args,
+            kwargs=kwargs,
+            s3_bucket=self.s3_bucket,
         )
-        self.logger.info(
-            f'Enqueing function "{self.function_name}", '
-            f'result_store: "{result_store}", '
-            f"message_body size: {sizeof_fmt(len(message_body))}"
+        sqsclient.send_message(
+            QueueUrl=self.queue_url, MessageBody=message.message_body
         )
-        if len(message_body) > 250000:  # current maximum is 262144 bytes
-            self.logger.info(f"Uploading message_body as a proxy {proxy_store}")
-            with timeme() as dt:
-                s3client.put_object(
-                    Bucket=self.s3_bucket, Key=proxy_store, Body=message_body
-                )
-            self.logger.info(f"Uploaded proxy in {dt.value}s")
-            proxy_body = json.dumps({"proxy": proxy_store})
-            sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=proxy_body)
-        else:
-            sqsclient.send_message(QueueUrl=self.queue_url, MessageBody=message_body)
-        return LambdaResult(s3_bucket=self.s3_bucket, key=result_store)
+        return LambdaResult(s3_bucket=self.s3_bucket, key=message.result_store)
 
 
 class LambdaResult:
