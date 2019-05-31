@@ -6,7 +6,12 @@ build-backend = "flit.buildapi"
 module = "tclambda"
 author = "Niels Lemmens"
 author-email = "draso.odin@gmail.com"
-classifiers = ["License :: OSI Approved :: MIT License"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.7",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 home-page = "https://github.com/trustcruit/tclambda"
 requires-python = ">=3.7"
 description-file = "README.md"
