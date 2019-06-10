@@ -136,14 +136,14 @@ class LambdaResult:
         try:
             return self._result["result"]
         except KeyError:
-            raise Exception(self._result["exception"])
+            raise Exception(self._result["exception"]) from None
 
     async def async_result(self, delay: int = 5, max_attempts: int = 20):
         await self.async_wait(delay, max_attempts)
         try:
             return self._result["result"]
         except KeyError:
-            raise Exception(self._result["exception"])
+            raise Exception(self._result["exception"]) from None
 
 
 def sizeof_fmt(num, suffix="B"):
