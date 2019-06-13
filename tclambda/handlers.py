@@ -21,9 +21,10 @@ TC_THIS_BUCKET = os.getenv("TC_THIS_BUCKET")
 
 
 class LambdaHandler:
-    def __init__(self):
+    def __init__(self, json_encoder_class=json.JSONEncoder):
         self.logger = logging.getLogger("tclambda.LambdaHandler")
         self.functions = {"ping": lambda: "pong"}
+        self.json_encoder_class = json_encoder_class
 
     def register(self, name=None):
         def wrapper(func):
@@ -129,13 +130,14 @@ class LambdaHandler:
     def store_result(self, key, result):
         if TC_THIS_BUCKET:
             try:
-                result_body = json.dumps(result)
+                result_body = json.dumps(result, cls=self.json_encoder_class)
             except TypeError as e:
                 self.logger.exception(f"Couldn't encode result {result}")
                 s = StringIO()
                 traceback.print_exc(file=s)
                 result_body = json.dumps(
-                    {"exception": repr(e), "traceback": s.getvalue()}
+                    {"exception": repr(e), "traceback": s.getvalue()},
+                    cls=self.json_encoder_class,
                 )
             s3client.put_object(Bucket=TC_THIS_BUCKET, Key=key, Body=result_body)
 
