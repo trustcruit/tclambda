@@ -1,0 +1,23 @@
+on: push
+name: Test on push
+jobs:
+  pipenvInstall:
+    name: Pipenv install
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Pipenv install
+      uses: peaceiris/actions-pipenv@3.7
+      with:
+        args: sync -d
+    - name: Pipenv run test
+      uses: peaceiris/actions-pipenv@3.7
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        TC_THIS_BUCKET: ${{ secrets.TC_THIS_BUCKET }}
+      with:
+        args: run test
+    - name: Style check
+      uses: bulv1ne/python-style-check@master
