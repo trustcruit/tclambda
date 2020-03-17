@@ -7,7 +7,7 @@ verify_ssl = true
 flit = "*"
 isort = "*"
 flake8 = "*"
-black = "==19.3b0"
+black = "==19.10b0"
 boto3 = "*"
 coverage = "*"
 pytest = "*"
