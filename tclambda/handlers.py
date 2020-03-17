@@ -10,6 +10,7 @@ import boto3
 
 from .exceptions import RetryException
 from .extras import sentry_init
+from .messages import Message
 
 sentry_init()
 logging.basicConfig(level=logging.INFO)
@@ -58,41 +59,36 @@ class LambdaHandler:
                 handlers.append(future)
         await asyncio.gather(*handlers)
 
-    async def handle_message(self, message, context):
-        if "proxy" in message:
-            obj = s3client.get_object(Bucket=TC_THIS_BUCKET, Key=message["proxy"])
-            message = json.load(obj["Body"])
-        result_body = {}
-        result_store = message.get("result_store")
+    async def handle_message(self, message_dict, context):
+        message = Message(message_dict, s3_bucket=TC_THIS_BUCKET)
 
         try:
-            func_name = message.get("function")
-            if not func_name:
-                self.logger.error(f'Message does not contain key "function" {message}')
-                raise TypeError(f'Message does not contain key "function" {message}')
-            func = self.functions.get(func_name)
+            if not message.func_name:
+                self.logger.error(
+                    f'Message does not contain key "function" {message_dict}'
+                )
+                raise TypeError(
+                    f'Message does not contain key "function" {message_dict}'
+                )
+            func = self.functions.get(message.func_name)
             if not func:
                 available_functions = sorted(self.functions.keys())
                 self.logger.error(
-                    f"Function {func_name} is not a registered function in {available_functions}"
+                    f"Function {message.func_name} is not a registered function in {available_functions}"
                 )
-                raise TypeError(f"Function {func_name} does not exist")
-
-            args = message.get("args", ())
-            kwargs = message.get("kwargs", {})
+                raise TypeError(f"Function {message.func_name} does not exist")
 
             if asyncio.iscoroutinefunction(func):
-                result_body["result"] = await func(*args, **kwargs)
+                result = {"result": await func(*message.args, **message.kwargs)}
             else:
-                result_body["result"] = func(*args, **kwargs)
+                result = {"result": func(*message.args, **message.kwargs)}
         except RetryException:
             raise
         except Exception as e:
             self.logger.exception(f"An exception occured while executing {message}")
             s = StringIO()
             traceback.print_exc(file=s)
-            result_body["exception"] = repr(e)
-            result_body["traceback"] = s.getvalue()
+            result = {"exception": repr(e), "traceback": s.getvalue()}
         finally:
             cloudwatch.put_metric_data(
                 Namespace="tclambda",
@@ -102,7 +98,7 @@ class LambdaHandler:
                         "Value": 1,
                         "Unit": "Count",
                         "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": str(func_name)},
+                            {"Name": "TcFunctionName", "Value": str(message.func_name)},
                             {
                                 "Name": "LambdaFunctionName",
                                 "Value": context.function_name,
@@ -114,7 +110,7 @@ class LambdaHandler:
                         "Value": context.get_remaining_time_in_millis(),
                         "Unit": "Milliseconds",
                         "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": str(func_name)},
+                            {"Name": "TcFunctionName", "Value": str(message.func_name)},
                             {
                                 "Name": "LambdaFunctionName",
                                 "Value": context.function_name,
@@ -124,21 +120,14 @@ class LambdaHandler:
                 ],
             )
 
-        if result_store:
-            self.store_result(result_store, result_body)
+        try:
+            message.store_result(result, self.json_encoder_class)
+        except TypeError as e:
+            self.logger.exception(f"Couldn't encode result {result}")
+            s = StringIO()
+            traceback.print_exc(file=s)
 
-    def store_result(self, key, result):
-        if TC_THIS_BUCKET:
-            try:
-                result_body = json.dumps(result, cls=self.json_encoder_class)
-            except TypeError as e:
-                self.logger.exception(f"Couldn't encode result {result}")
-                s = StringIO()
-                traceback.print_exc(file=s)
-                result_body = json.dumps(
-                    {"exception": repr(e), "traceback": s.getvalue()},
-                    cls=self.json_encoder_class,
-                )
-            s3client.put_object(Bucket=TC_THIS_BUCKET, Key=key, Body=result_body)
-
-        return result
+            message.store_result(
+                {"exception": repr(e), "traceback": s.getvalue()},
+                self.json_encoder_class,
+            )
