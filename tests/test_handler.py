@@ -103,9 +103,7 @@ class TestHandler(unittest.TestCase):
         f = FunctionBuilder("missing_function")
         f.message_body.pop("function")
         self.app(f.sqs, LambdaContext(function_name="tclambda-test"))
-        with self.assertRaisesRegex(
-            Exception, 'TypeError.*Message does not contain key "function"'
-        ):
+        with self.assertRaisesRegex(Exception, "TypeError.*Message func_name is None"):
             f.result.result(delay=1, max_attempts=3)
 
     @unittest.skipIf(TC_THIS_BUCKET is None, "TC_THIS_BUCKET is None")

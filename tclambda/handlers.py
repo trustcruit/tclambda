@@ -63,20 +63,7 @@ class LambdaHandler:
         message = Message(message_dict, s3_bucket=TC_THIS_BUCKET)
 
         try:
-            if not message.func_name:
-                self.logger.error(
-                    f'Message does not contain key "function" {message_dict}'
-                )
-                raise TypeError(
-                    f'Message does not contain key "function" {message_dict}'
-                )
-            func = self.functions.get(message.func_name)
-            if not func:
-                available_functions = sorted(self.functions.keys())
-                self.logger.error(
-                    f"Function {message.func_name} is not a registered function in {available_functions}"
-                )
-                raise TypeError(f"Function {message.func_name} does not exist")
+            func = self.lookup_function_name(message.func_name)
 
             if asyncio.iscoroutinefunction(func):
                 result = {"result": await func(*message.args, **message.kwargs)}
@@ -107,6 +94,19 @@ class LambdaHandler:
                 {"exception": repr(e), "traceback": s.getvalue()},
                 self.json_encoder_class,
             )
+
+    def lookup_function_name(self, func_name: str):
+        if not func_name:
+            self.logger.error(f"Message func_name is {func_name}")
+            raise TypeError(f"Message func_name is {func_name}")
+        func = self.functions.get(func_name)
+        if not func:
+            available_functions = sorted(self.functions.keys())
+            self.logger.error(
+                f"Function {func_name} is not a registered function in {available_functions}"
+            )
+            raise TypeError(f"Function {func_name} does not exist")
+        return func
 
 
 def put_metric_data(*, remaining_time_in_millis: int, **dimensions):
