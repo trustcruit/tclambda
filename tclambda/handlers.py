@@ -15,7 +15,6 @@ from .messages import Message
 sentry_init()
 logging.basicConfig(level=logging.INFO)
 
-s3client = boto3.client("s3")
 cloudwatch = boto3.client("cloudwatch")
 
 TC_THIS_BUCKET = os.getenv("TC_THIS_BUCKET")
