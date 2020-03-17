@@ -90,34 +90,10 @@ class LambdaHandler:
             traceback.print_exc(file=s)
             result = {"exception": repr(e), "traceback": s.getvalue()}
         finally:
-            cloudwatch.put_metric_data(
-                Namespace="tclambda",
-                MetricData=[
-                    {
-                        "MetricName": "Count",
-                        "Value": 1,
-                        "Unit": "Count",
-                        "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": str(message.func_name)},
-                            {
-                                "Name": "LambdaFunctionName",
-                                "Value": context.function_name,
-                            },
-                        ],
-                    },
-                    {
-                        "MetricName": "RemainingMilliseconds",
-                        "Value": context.get_remaining_time_in_millis(),
-                        "Unit": "Milliseconds",
-                        "Dimensions": [
-                            {"Name": "TcFunctionName", "Value": str(message.func_name)},
-                            {
-                                "Name": "LambdaFunctionName",
-                                "Value": context.function_name,
-                            },
-                        ],
-                    },
-                ],
+            put_metric_data(
+                remaining_time_in_millis=context.get_remaining_time_in_millis(),
+                TcFunctionName=message.func_name,
+                LambdaFunctionName=context.function_name,
             )
 
         try:
@@ -131,3 +107,28 @@ class LambdaHandler:
                 {"exception": repr(e), "traceback": s.getvalue()},
                 self.json_encoder_class,
             )
+
+
+def put_metric_data(*, remaining_time_in_millis: int, **dimensions):
+    metric_dimensions = [
+        {"Name": key, "Value": value}
+        for key, value in dimensions.items()
+        if key and value
+    ]
+    cloudwatch.put_metric_data(
+        Namespace="tclambda",
+        MetricData=[
+            {
+                "MetricName": "Count",
+                "Value": 1,
+                "Unit": "Count",
+                "Dimensions": metric_dimensions,
+            },
+            {
+                "MetricName": "RemainingMilliseconds",
+                "Value": remaining_time_in_millis,
+                "Unit": "Milliseconds",
+                "Dimensions": metric_dimensions,
+            },
+        ],
+    )
