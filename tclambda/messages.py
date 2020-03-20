@@ -9,13 +9,13 @@ s3client = boto3.client("s3")
 
 @dataclass(init=False)
 class Message:
-    func_name: str
+    func_name: Optional[str]
     args: tuple
     kwargs: dict
-    result_store: str
+    result_store: Optional[str]
     s3_bucket: str
 
-    def __init__(self, message_dict: dict, s3_bucket: Optional[str] = None):
+    def __init__(self, message_dict: dict, s3_bucket: str):
         self.s3_bucket = s3_bucket
 
         if "proxy" in message_dict:
@@ -32,7 +32,7 @@ class Message:
 
         result_body = json.dumps(result, cls=json_encoder_class)
 
-        if self.s3_bucket and self.result_store:
+        if self.result_store:
             s3client.put_object(
                 Bucket=self.s3_bucket, Key=self.result_store, Body=result_body
             )

@@ -38,7 +38,7 @@ class Message:
 
 
 def build_message(
-    function_name, args, kwargs, s3_bucket, force_upload=False
+    function_name: str, args: tuple, kwargs: dict, s3_bucket: str, force_upload=False
 ) -> Message:
     logger = logging.getLogger("tclambda.function.build_message")
     key = f"{function_name}/{datetime.utcnow():%Y/%m/%d/%H%M%S}/{uuid4()}.json"
